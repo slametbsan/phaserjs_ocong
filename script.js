@@ -405,9 +405,12 @@ class scnPlay extends Phaser.Scene {
                this.backgrounds[i][j].x -= this.backgrounds[i][j].getData('kecepatan');
 
                if (this.backgrounds[i][j].x <= -(1366 / 2)) {
-                  var diff = this.backgrounds[i][j].x + (1366 / 2);
+                  // gambar yang keluar layar (kiri) dipindah ke posisi paling belakang dari sisa gambar yang ada (paling kanan)
+                  // diff = lebar_gambar x (panjang_array_background - 1)
+                  var diff = 1366 * this.backgrounds.length - 1;
 
-                  this.backgrounds[i][j].x = 1366 + 1366 / 2 + diff;
+                  // posisi this.background[i][j].x saat ini ditambah dengan diff sebagai posisi baru
+                  this.backgrounds[i][j].x += diff;
                }
             }
          }
