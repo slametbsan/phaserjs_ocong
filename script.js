@@ -42,6 +42,8 @@ class scnMenu extends Phaser.Scene {
       this.load.image('nyawa_outline', 'nyawa_outline.png');
       this.load.image('nyawa_full', 'nyawa_full.png');
       this.load.image('powerup', 'powerup.png');
+      this.load.image('shield', 'shield.png');
+      this.load.image('shieldOn', 'shield_up.png');
 
       this.load.image('ptc_blue', 'particles/particle_blue.png');
       this.load.spritesheet('sps_mummy', 'mummy37x45.png', { frameWidth: 37, frameHeight: 45 });
@@ -239,7 +241,8 @@ class scnPlay extends Phaser.Scene {
 
    create() {
       // nyawa dan power up
-      nyawa = maxHearts;
+      // nyawa = maxHearts;
+      nyawa = 3;
 
       //create three heart outlines...
       var heartOutline1 = this.add.image(X_POSITION.RIGHT - 100, 60, 'nyawa_outline').setDepth(4);
@@ -260,6 +263,12 @@ class scnPlay extends Phaser.Scene {
       this.chara.setDepth(3);
       // atur skala karakter menjadi 0 (tidak tampak)
       this.chara.setScale(0);
+
+      // sprite baru untuk shield dan menyembunyikannya dengan setVisible(false)
+      this.shield = this.add.image(this.chara.x - this.chara.width / 2, this.chara.y, 'shieldOn');
+      this.shield.setDepth(4);
+      this.shield.setScale(0.5);
+      this.shield.setVisible(false);
 
       this.isGameRunning = false;
 
@@ -390,6 +399,67 @@ class scnPlay extends Phaser.Scene {
       this.trailEmitter.emitParticle(16); //jml partikel yang dimunculkan
       this.trail.setDepth(2);
       this.trail.setVisible(false);
+
+      // tambahan untuk power-up shield ---------------
+      this.timerShield = 0;   //timer kemunculan shield
+      this.shields = [];  //array shields
+
+      this.activateShield = () => {
+         console.log('shield diaktifkan!');
+
+         // Hapus timer yang ada jika masih aktif
+         if (myScene.shieldTimer) myScene.shieldTimer.remove(false);
+
+         // Buat timer baru dengan delay yang lebih lama
+         myScene.shieldTimer = this.time.addEvent({
+            delay: 5000, // 5000 milidetik = 5 detik
+            callback: () => {
+               console.log('boom!');
+               myScene.deactivateShield();
+            }
+         });
+
+         this.isShielded = true;
+         // this.chara.setTint(0xF9E400);
+
+         // Tampilkan shield dan atur posisinya di sebelah kanan this.chara
+         this.shield.setVisible(true);
+
+         // Mulai efek berkedip setelah 4 detik (1 detik sebelum shield habis)
+         this.time.delayedCall(4000, () => {
+            this.startShieldBlink();
+         });
+      }
+
+      this.deactivateShield = () => {
+         this.isShielded = false;
+         this.chara.clearTint();
+         // Sembunyikan shield
+         this.shield.setVisible(false);
+
+         // Hentikan efek berkedip
+         this.stopShieldBlink();
+      }
+
+      // Method untuk memulai efek berkedip
+      this.startShieldBlink = () => {
+         this.shieldBlinkTween = this.tweens.add({
+            targets: this.shield,
+            alpha: 0,
+            duration: 250,
+            yoyo: true,
+            repeat: -1
+         });
+      }
+
+      // Method untuk menghentikan efek berkedip
+      this.stopShieldBlink = () => {
+         if (this.shieldBlinkTween) {
+            this.shieldBlinkTween.stop();
+            this.shield.setAlpha(1); // Kembalikan alpha ke nilai semula
+         }
+      }
+
    }
 
    update() {
@@ -461,6 +531,14 @@ class scnPlay extends Phaser.Scene {
             if (this.chara.getBounds().contains(this.halangan[i].x, this.halangan[i].y) && this.halangan[i].getData('status_aktif') == true) {
                this.halangan[i].setData('status_aktif', false);
 
+               //jika shield aktif, return --tambahkan efek partikel saja supaya halangan hancur
+               if (this.isShielded) {
+                  this.score++;
+                  this.label_score.setText(this.score);
+
+                  return;
+               }
+
                //menampilkan visual nyawa
                var currentHeartCount = nyawa;
                var currentHeart = hearts[currentHeartCount - 1];
@@ -479,9 +557,7 @@ class scnPlay extends Phaser.Scene {
 
                if (nyawa <= 0) {
                   this.isGameRunning = false;   // ubah status game
-
                   this.snd_dead.play();   // mainkan sound fx
-
                   this.trail.setVisible(false); // sembunyikan trail
 
                   if (this.charaTweens != null) { this.charaTweens.stop(); }  // cek variabel chara
@@ -511,28 +587,28 @@ class scnPlay extends Phaser.Scene {
 
                break;
             }
-
-            // deteksi jika karakter terbang melebih batas layar atas
-            if (this.chara.y < -50) {
-               this.isGameRunning = false;
-
-               this.snd_dead.play();
-               this.trail.setVisible(false);
-
-               if (this.charaTweens != null) { this.charaTweens.stop(); }
-
-               this.charaTweens = this.tweens.add({
-                  targets: this.chara,
-                  ease: 'Elastic.easeOut',
-                  duration: 2000,
-                  alpha: 0,
-                  onComplete: myScene.gameOver
-               });
-            }
          }
 
          // mengurangi timer
          this.timerHalangan--;
+
+         // deteksi jika karakter terbang melebih batas layar atas
+         if (this.chara.y < -50) {
+            this.isGameRunning = false;
+
+            this.snd_dead.play();
+            this.trail.setVisible(false);
+
+            if (this.charaTweens != null) { this.charaTweens.stop(); }
+
+            this.charaTweens = this.tweens.add({
+               targets: this.chara,
+               ease: 'Elastic.easeOut',
+               duration: 2000,
+               alpha: 0,
+               onComplete: myScene.gameOver
+            });
+         }
 
          // tambahan untuk power-up
          if (this.timePowerUp == 0) {
@@ -593,6 +669,60 @@ class scnPlay extends Phaser.Scene {
          }
 
          this.timePowerUp--;
+
+         // TAMBAHAN UNTUK POWER-UP SHIELD-----------------------
+         if (this.timerShield == 0) {
+            //acak posisi munculnya power-up
+            let random_y = Math.floor((Math.random() * 680) + 60);
+
+            //membuat obyek power-up
+            let shieldBaru = this.add.image(1500, random_y, 'shield');
+            shieldBaru.setOrigin(0.0);
+            shieldBaru.setData('status_aktif', true);
+            shieldBaru.setData('kecepatan', Math.floor((Math.random() * 15) + 10));
+            shieldBaru.setDepth(5);
+            shieldBaru.setScale(0.75);
+
+            this.shields.push(shieldBaru);
+            this.timerShield = Math.floor((Math.random() * 50) + 800);
+         }
+
+         for (let b = this.shields.length - 1; b >= 0; b--) {
+            // membuat shield bergerak
+            this.shields[b].x -= this.shields[b].getData('kecepatan');
+
+            // menghilangkan power-up yang sudah keluar layar
+            if (this.shields[b].x < -200) {
+               this.shields[b].destroy();
+               this.shields.splice(b, 1);
+               break;
+            }
+
+            //deteksi tubrukan chara dengan power-up shield
+            if (this.chara.getBounds().contains(this.shields[b].x, this.shields[b].y)) {
+
+               if (this.shields[b].getData('status_aktif') == true) {
+                  this.shields[b].setData("status_aktif", false);    //ubah status power-up menjadi tidak aktif
+
+                  if (this.isShielded) return;
+
+                  //aktifkan tameng untuk durasi tertentu
+                  this.activateShield();
+
+                  this.shields[b].destroy(); //hapus power-up
+                  this.shields.splice(b, 1);
+               }
+
+               break;
+            }
+         }
+
+         this.timerShield--;
+
+         if (this.isShielded) {
+            this.shield.setPosition(this.chara.x + this.chara.width / 2 + 10, this.chara.y);
+         }
+
       }
    }
 };
