@@ -587,6 +587,16 @@ class scnPlay extends Phaser.Scene {
 
                break;
             }
+
+            //jika shield aktif dan terjadi tabrakan dengan halangan
+            if (this.isShielded && this.shield.getBounds().contains(this.halangan[i].x, this.halangan[i].y)) {
+               this.halangan[i].setData('status_aktif', false);
+               this.halangan[i].destroy();
+               this.halangan.splice(i, 1);
+
+               this.score++;
+               this.label_score.setText(this.score);
+            }
          }
 
          // mengurangi timer
