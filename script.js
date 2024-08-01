@@ -653,6 +653,26 @@ class scnPlay extends Phaser.Scene {
                if (nyawa < 3) {
                   //ubah status power-up menjadi tidak aktif
                   this.powerUps[a].setData("status_aktif", false);
+
+                  // Menggunakan power-up sebagai partikel
+                  let powerUpTexture = this.powerUps[a].texture.key; // Mendapatkan key dari tekstur power-up
+                  let particles = this.add.particles(powerUpTexture).setDepth(4);
+
+                  let emitter = particles.createEmitter({
+                     x: this.powerUps[a].x,
+                     y: this.powerUps[a].y,
+                     speed: { min: 100, max: 200 },
+                     angle: { min: 0, max: 360 },
+                     scale: { start: 1, end: 0 },
+                     lifespan: 500,
+                     blendMode: 'ADD'
+                  });
+
+                  // Hapus emitter setelah partikel selesai
+                  this.time.delayedCall(500, () => {
+                     particles.destroy();
+                  });
+
                   this.powerUps[a].destroy();
                   this.powerUps.splice(a, 1);
 
